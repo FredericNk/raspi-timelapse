@@ -1,0 +1,68 @@
+
+# Setup
+Of course some steps can be done some other way, this is how I did it. If you think you have a better way, please make a Pull request!
+If you want to configure it with a screen and keyboard-mouse combination you can skip step 3 and 4.
+
+1. Download the newest Raspbian Lite Image from here https://www.raspberrypi.org/downloads/raspbian/
+2. Use Etcher ( https://www.balena.io/etcher/ ) to install the image to the SD Card
+3. Create a file named "wpa_supplicant.conf" with the content: 
+network={
+       ssid="WiFi-SSID"
+       psk="PASSWORD"
+       key_mgmt=WPA-PSK
+}
+to the "boot" folder of the SD Card.
+4. Create a file with no file extension named "ssh" to enable ssh and save it in the same folder (boot).
+5. Savely eject your SD Card.
+6. Put it in the Raspberry
+7. Plug in the External HDD
+8. Plug in you power supply to the HDD
+9. Plug in you power supply of the raspberry
+10. It should connect automatically to you wifi. I got the IP Adress of the raspberry pi by looking on the admin page of my wifi router. At that point in time I also enabled the static IP function for it.
+11. Log in to you pi by entering the following in to you console: "ssh pi@PUT.THE.IP.HERE" it should prompt you for a username and then a password. The default value for the username is "pi" and password is "raspberry". 
+12. Follow some online tutorial on how to setup and secure your pi. Some things I did are: Changing the default ssh passwords. Running "sudo apt-get upgrade" and "sudo apt-get update"
+13. Run "sudo raspi-config" (https://www.raspberrypi.org/documentation/configuration/raspi-config.md). I then configured:
+ - The language and localisation
+ - The keyboard type
+ - The timezone
+ - Enabled the Camera in the Interfacing options!!
+ - Enabled ssh login (I think that makes it permanent because the method with the ssh file is only for the next bootup)
+ - Changed the MB for the GPU to 144 MB 
+14. Rebooted
+15. Then I formatted the external Drive to NTFS 
+16. Mounted to /media/externalHDD ("mount /dev/sda1 /media/externalHDD"); replace "sda1" with you partition name; you get it from using "sudo lsblk"
+17. Added a entry to the fstab file ("sudo nano /etc/fstab"; I got the device ID from blkid; the entry I added was something like: 
+  "/dev/sda1 /media/externalHDD ntfs defaults 0 0" Again you have to replace "sda1" with your drive letter. Also this is dangerous and can lead to you needing to do a new system setup so please read up how to make fstab entries before blindly copying this!
+18. Created a subfoldering by hand (what a shame!) for the years I want to use the cam -> 2019 and 2020
+19. Created subfolders for each month -> 01, 02, ... 12
+20. Created the timelapse_picture.sh script ("nano timelapse_script.sh" (see file in github for content) this takes the pictures and saves them!
+21. Created the pulse.sh and find_newest.sh in the same way. They are just for logging and surveillance purposes
+22. Changed them all to be executable with chmod +x SCRIPT_NAME
+23. Added them to a cronjob ("sudo crontab -e")
+IMPORTANT: If you run the "crontab -e" as sudo your scripts will run as root! I did this because I don't care for security and don't had the camera not take pictures for some time because the externalHDD was mounted by root. This was propably caused by my incompetence but I still wanted to make sure this won't happen again, so I added my scripts to the root cronjob.
+
+/# m h dom mon dow command
+*/2 4-22 * * * bash /home/pi/timelapse_picture.sh >/dev/null 2>&1
+*/2 * * * * bash /home/pi/pulse.sh > /dev/null 2>&1
+*/15 * * * * bash /home/pi/find_newest.sh > /dev/null 2>&1
+
+The entries explained are: "*/2" every 2 minutes, "4-22" between 04:00h and 22:00h, "*" every day of the month, "*" every month run the following bash script and pipe its output to some other dimension.
+The second runs every second minute every day and the last one runs every quarted hour every day.
+
+24. Create a "timelapse.log" file in the /var/log directory with "sudo nano /var/log/timelapse.log"
+
+25. Activate a hardware watchdog (automatically restarts you raspberry pi if conditions you can define are set): 
+  - "sudo modprobe bcm2835_wdt"
+  - "sudo apt-get install watchdog"
+  - "sudo nano /etc/watchdog.conf"
+  --> Configure here:
+  Remove the # before these two lines: 
+    watchdog-device        = /dev/watchdog
+    max-load-1             = 24 
+  Remove the # before these lines:
+    file = /var/log/timelapse.log
+    change = 180
+  The file is the file the watchdog observers for the time in seconds given by the "change" value. If the file was not changed in this interval, the watchdog triggers a restart of the device. So be very careful which time interval and which file you set! For this to work you have to have something editing or using "touch" on the file above. I have a line for this in the timelapse_picture.sh script
+  - Start the watchdog with: "sudo /etc/init.d/watchdog start"
+ 
+26. Observe as you pictures fly in
