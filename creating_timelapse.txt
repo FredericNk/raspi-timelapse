@@ -1,0 +1,30 @@
+# Creating the video from the pictures
+
+After trying to use several python librarys and some free tools a friend finally recommended using ffmpeg to me.
+The only problem with ffmpeg is, that it expects a straight numbering of the files. If you have that numbering, great! If not (like me) use the following commands to create a images_list.txt for ffmpeg to parse:
+Caveat: This is now in the Windows CMD!
+
+  (for %i in (*.jpg) do @echo file '%i') > images_list.txt
+
+This creates a images_list Textfile with entrys like: "file '2019-05-12_183001.jpg'".
+
+To create the video I used the following command:
+
+  ffmpeg -f concat -safe 0 -i images_list.txt -r 20 -vcodec libx264 -vf scale=1920:-2 reduced_video.mp4
+ 
+ This scales the video to 1920 px width! The "-2" for the scale basically says ffmpeg that I don't care what the length of the other edge is.
+ 
+Afterwards I use
+  
+  ffmpeg -i full_res.mp4 -filter:v "crop=in_w:1080:0:in_h-1080" full_hd.mp4
+  
+ to crop the video to full hd. The "crop" argument is a bit more complicated because I tell ffmpeg that I want the lower part of the video. 
+
+Afterwards I can combine multiple videos to one using: 
+  ffmpeg -f concat -i list_of_month_vids.txt -vcodec libx264 combined.mp4
+
+The "list_of_month_vids.txt" contains: 
+  file '05/full_hd.mp4'
+  file '06/full_hd.mp4'
+ 
+ So a relative path to each file you want to add.
